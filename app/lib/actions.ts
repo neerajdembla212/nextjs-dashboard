@@ -4,7 +4,6 @@ import { z } from "zod";
 import postgres from "postgres";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { Amarante } from "next/font/google";
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
 
@@ -30,11 +29,14 @@ export async function createInvoice(formData: FormData) {
   const { customerId, amount, status } = InvoiceSchema.parse(rawFormData);
   const amountInCents = amount * 100;
   const date = new Date().toISOString().split("T")[0];
-
-  await sql`
-  INSERT INTO invoices (customer_id, amount, status, date)
-  VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-  `;
+  try {
+    await sql`
+    INSERT INTO invoices (customer_id, amount, status, date)
+    VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+    `;
+  } catch (err) {
+    throw new Error("cannot create invoice");
+  }
   revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
 }
@@ -48,19 +50,24 @@ export async function updateInvoice(id: string, formData: FormData) {
 
   const { customerId, amount, status } = InvoiceSchema.parse(rawFormData);
   const amountInCents = amount * 100;
-  await sql`
-  UPDATE invoices
-  SET customer_id=${customerId}, amount=${amountInCents}, status=${status}
-  WHERE id=${id}
-  `;
+  try {
+    await sql`
+    UPDATE invoices
+    SET customer_id=${customerId}, amount=${amountInCents}, status=${status}
+    WHERE id=${id}
+    `;
+  } catch (err) {
+    throw new Error("Cannot update invoice ");
+  }
   revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
 }
 
 export async function deleteInvoice(id: string) {
+  throw new Error("Failed to delete invoice");
   await sql`
   DELETE FROM invoices
   WHERE id=${id}
   `;
-  revalidatePath('/dashboard/invoices')
+  revalidatePath("/dashboard/invoices");
 }
